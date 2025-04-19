@@ -1,3 +1,5 @@
+use crate::{cpu::CPU, mem::Memory};
+
 pub enum Opcode {
     ADD = 0b0001,
     AND = 0b0101,
@@ -16,6 +18,3 @@ pub enum Opcode {
     RESERVED = 0b1101
 }
 
-pub fn decode_and_execute(instruction: u16) {
-    unimplemented!();
-}

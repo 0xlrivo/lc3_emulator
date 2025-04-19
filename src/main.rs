@@ -1,6 +1,7 @@
 mod cpu;
 mod mem;
 mod isa;
+mod utils;
 
 use cpu::CPU;
 use mem::Memory;
