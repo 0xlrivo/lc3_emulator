@@ -1,6 +1,6 @@
 use std::usize;
 
-use crate::{isa, mem::Memory, utils::extend_sign};
+use crate::{isa, mem::Memory, utils::{extend_sign, extract_dr, extract_sr1}};
 
 pub enum ConditionFlag {
     N = 0b100,  // Negative
@@ -38,30 +38,57 @@ impl CPU {
 
     pub fn op_add(&mut self, mem: &mut Memory, instruction: u16) {
         // extract the destination register and source register 1
-        let dr = (instruction >> 9) & 0x7;
-        let sr1 = (instruction >> 6) & 0x7;
+        let dr = extract_dr(instruction); 
+        let sr1 = extract_sr1(instruction); 
 
         // extract the immediate flag, which differentiates the two ADDs
         let imm_flag = (instruction >> 5) & 0x1;
 
         let result = if imm_flag == 1 {
             let imm = extend_sign(instruction & 0x1F, 5);
-            self.regs[sr1 as usize].wrapping_add(imm)
+            self.regs[sr1].wrapping_add(imm)
         } else {
             let sr2 = instruction & 0x7;
-            self.regs[sr1 as usize].wrapping_add(self.regs[sr2 as usize])
+            self.regs[sr1].wrapping_add(self.regs[sr2 as usize])
         };
 
         // store the result in the destination register
-        self.regs[dr as usize] = result;
+        self.regs[dr] = result;
         // update flags based on dr state
-        self.update_flags(dr as usize);
+        self.update_flags(dr);
     }
 
     pub fn op_and(&mut self, mem: &mut Memory, instruction: u16) {
-        todo!()
+        // extract the destination register and source register 1
+        let dr = extract_dr(instruction); 
+        let sr1 = extract_sr1(instruction); 
+
+        // extract the immediate flag, which differentiates the two ADDs
+        let imm_flag = (instruction >> 5) & 0x1;
+
+        let result = if imm_flag == 1 {
+            let imm = extend_sign(instruction & 0x1F, 5);
+            self.regs[sr1] & imm
+        } else {
+            let sr2 = instruction & 0x7;
+            self.regs[sr1] & self.regs[sr2 as usize]
+        };
+
+        // store the result in the destination register
+        self.regs[dr] = result;
+        // update flags based on dr state
+        self.update_flags(dr);
     }
-    
+
+    pub fn op_not(&mut self, mem: &mut Memory, instruction: u16) {
+        // extract the destination register and source register 1
+        let dr = extract_dr(instruction); 
+        let sr1 = extract_sr1(instruction); 
+        
+        // compute NOT of sr1's value
+        todo!();
+    }
+
     // update the conditional flags based on the lastest operation's result
     // stored in reg
     pub fn update_flags(&mut self, reg: usize) {
