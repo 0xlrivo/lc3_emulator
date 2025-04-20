@@ -32,10 +32,10 @@ impl CPU {
         
         // execute the opcode
         match opcode {
-            0b0000 => self.op_br(mem, instruction),
-            0b0001 => self.op_add(mem, instruction),
-            0b0101 => self.op_and(mem, instruction),
-            0b1001 => self.op_not(mem, instruction),
+            0b0000 => self.op_br(instruction),
+            0b0001 => self.op_add(instruction),
+            0b0101 => self.op_and(instruction),
+            0b1001 => self.op_not(instruction),
             0b0010 => self.op_ld(mem, instruction),
             0b1010 => self.op_ldi(mem, instruction),
             0b0110 => self.op_ldr(mem, instruction),
@@ -43,13 +43,15 @@ impl CPU {
             0b0011 => self.op_st(mem, instruction),
             0b1011 => self.op_sti(mem, instruction),
             0b0111 => self.op_str(mem, instruction),
-            0b1111 => self.op_trap(mem, instruction),
+            0b1100 => self.op_jmp_ret(instruction),
+            0b0100 => self.op_jsr_jsrr(instruction),
+            0b1111 => self.op_trap(instruction),
             _ => println!("Invalid Opcode"),
         }
     }
 
     // ADD opcode
-    pub fn op_add(&mut self, mem: &mut Memory, instruction: u16) {
+    pub fn op_add(&mut self, instruction: u16) {
         // extract the destination register and source register 1
         let dr = extract_dr(instruction); 
         let sr1 = extract_sr1(instruction); 
@@ -72,7 +74,7 @@ impl CPU {
     }
     
     // AND opcode
-    pub fn op_and(&mut self, mem: &mut Memory, instruction: u16) {
+    pub fn op_and(&mut self, instruction: u16) {
         // extract the destination register and source register 1
         let dr = extract_dr(instruction); 
         let sr1 = extract_sr1(instruction); 
@@ -95,7 +97,7 @@ impl CPU {
     }
     
     // NOT opcode
-    pub fn op_not(&mut self, mem: &mut Memory, instruction: u16) {
+    pub fn op_not(&mut self, instruction: u16) {
         // extract the destination register and source register 1
         let dr = extract_dr(instruction); 
         let sr1 = extract_sr1(instruction); 
@@ -110,7 +112,7 @@ impl CPU {
     }
 
     // BR opcode
-    pub fn op_br(&mut self, mem: &mut Memory, instruction: u16) {
+    pub fn op_br(&mut self, instruction: u16) {
         // extract n (11 th bit of instruction)
         let n = (instruction >> 11) & 0x1;
         // extract z (10 th bit of instruction)
@@ -219,8 +221,34 @@ impl CPU {
         mem.write_word(base.wrapping_add(offset), self.regs[sr]);
     }
 
+    // JMP or RET
+    pub fn op_jmp_ret(&mut self, instruction: u16) {
+        // extract the base register
+        let br = extract_sr1(instruction);
+        // set pc as the content of base register
+        self.pc = self.regs[br];
+    }
+
+    // JSR or JSRR
+    pub fn op_jsr_jsrr(&mut self, instruction: u16) {
+        // firstly, save in R7 the incremented program counter
+        self.regs[7] = self.pc;
+        // if the 11th bit is set then it is a JSR
+        if ((instruction >> 11) & 0x1) == 1 {
+            // extract the PCoffset11 and sign extend it
+            let offset = extend_sign(instruction & 0x7FF, 11);
+            // jump to pc + offset
+            self.pc = self.pc.wrapping_add(offset);
+        } else {
+            // extract the base register
+            let br = extract_sr1(instruction);
+            // jump to the address contained in the base register
+            self.pc = self.regs[br];
+        }
+    }
+
     // TRAP opcode
-    pub fn op_trap(&mut self, mem: &mut Memory, instruction: u16) {
+    pub fn op_trap(&mut self, instruction: u16) {
         // extract the trap vector from the bits 0-7
         let trapvect = instruction & 0xFF;
         // execute the correct TRAP instruction
