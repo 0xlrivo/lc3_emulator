@@ -16,3 +16,8 @@ pub fn extract_dr(instruction: u16) -> usize {
 pub fn extract_sr1(instruction: u16) -> usize {
     ((instruction >> 6) & 0x7) as usize
 }
+
+// utility function to extract the offset9 (last 9 bits)
+pub fn extract_offset9(instruction: u16) -> u16 {
+    instruction & 0x1FF
+}
