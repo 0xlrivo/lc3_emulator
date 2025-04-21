@@ -1,5 +1,5 @@
 use core::fmt;
-use std::usize;
+use std::{io::Read, usize};
 
 use crate::{mem::Memory, utils::{extend_sign, extract_dr, extract_offset9, extract_sr1}};
 
@@ -253,6 +253,12 @@ impl CPU {
         let trapvect = instruction & 0xFF;
         // execute the correct TRAP instruction
         match trapvect {
+            // GETC
+            0x20 => {
+                let mut buf = [0; 1];
+                std::io::stdin().read_exact(&mut buf).expect("error reading input");
+                self.regs[0] = buf[0] as u16;
+            },
             // OUT
             0x21 => print!("{}", self.regs[0] as u8 as char), 
             // PUTS
@@ -263,6 +269,29 @@ impl CPU {
                     print!("{}", curr as u8 as char);
                     i += 1;
                     curr = mem.read_word(i);
+                }
+            },
+            // IN
+            0x23 => {
+                let mut buf = [0; 1];
+                std::io::stdin().read_exact(&mut buf).expect("error reading input");
+                self.regs[0] = buf[0] as u16;
+                println!("{}", buf[0] as char);
+            },
+            // PUTSP
+            0x24 => {
+                let mut i = self.regs[0];
+                let mut curr = mem.read_word(i);
+                loop {
+                    let low = curr & 0xFF;
+                    let high = (curr >> 8) & 0xFF; 
+                    if low == 0 || high == 0 {
+                        break;
+                    }
+                    i += 1;
+                    curr = mem.read_word(i);
+                    print!("{}", low as u8 as char);
+                    print!("{}", high as u8 as char);
                 }
             },
             // HLT
