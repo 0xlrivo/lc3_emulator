@@ -46,20 +46,23 @@ fn main() -> std::io::Result<()> {
 }
 
 fn load_program<P: AsRef<Path>>(mem: &mut Memory, path: P) -> io::Result<()> {
-    println!("[LC3-Emulator] loading program file into memory...");
     // try to open the file
     let mut file = File::open(path)?;
     // allocate a buffer to hold the file's content
     let mut buffer = Vec::new();
     // read the file as a Vec<u8>
     file.read_to_end(&mut buffer)?;
-    // convert the file into big-endian words
-    let mut pc = 0x3000;
+    // the first 4 bytes of an LC3 program contains the starting PC addres
+    let mut pc = 0;
+    // read the file in 4 byte chunks and write those in the emulator's memory
     for chunk in buffer.chunks_exact(2) {
         let word = u16::from_be_bytes([chunk[0], chunk[1]]); 
-        mem.write_word(pc, word);
-        pc += 1;
+        if pc == 0 {
+            pc = word;
+        } else {
+            mem.write_word(pc, word);
+            pc += 1;
+        }
     }
-    println!("[LC3-Emulator] program correctly loaded");
     Ok(())
 }

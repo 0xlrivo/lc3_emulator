@@ -45,7 +45,7 @@ impl CPU {
             0b0111 => self.op_str(mem, instruction),
             0b1100 => self.op_jmp_ret(instruction),
             0b0100 => self.op_jsr_jsrr(instruction),
-            0b1111 => self.op_trap(instruction),
+            0b1111 => self.op_trap(mem, instruction),
             _ => println!("Invalid Opcode"),
         }
     }
@@ -166,11 +166,11 @@ impl CPU {
         // extract the destination register
         let dr = extract_dr(instruction);
         // extract the base
-        let base = (instruction >> 6) & 0x7; 
+        let base = extract_sr1(instruction); 
         // extract the offset6 and sign extend it
         let offset = extend_sign(instruction & 0x3F, 6);
-        // load into DR the value at memory base + offset
-        self.regs[dr] = mem.read_word(base.wrapping_add(offset));
+        // load into DR the value at memory base register + offset
+        self.regs[dr] = mem.read_word(self.regs[base].wrapping_add(offset));
         // update condition flags
         self.update_flags(dr);
     }
@@ -181,8 +181,8 @@ impl CPU {
         let dr = extract_dr(instruction);
         // extract the PCoffset9 and sign extend it
         let offset = extend_sign(extract_offset9(instruction), 9);
-        // load into DR the value at memory word PC + offset
-        self.regs[dr] = mem.read_word(self.pc.wrapping_add(offset));
+        // load into DR the memory address computed via PC + offset 
+        self.regs[dr] = self.pc.wrapping_add(offset);
         // update condition flags
         self.update_flags(dr);
     }
@@ -214,11 +214,11 @@ impl CPU {
         // extract the destination register
         let sr = extract_dr(instruction);
         // extract the base
-        let base = (instruction >> 6) & 0x7; 
+        let base = extract_sr1(instruction); 
         // extract the offset6 and sign extend it
         let offset = extend_sign(instruction & 0x3F, 6);
         // store into base+offset the value of sr 
-        mem.write_word(base.wrapping_add(offset), self.regs[sr]);
+        mem.write_word(self.regs[base].wrapping_add(offset), self.regs[sr]);
     }
 
     // JMP or RET
@@ -248,11 +248,24 @@ impl CPU {
     }
 
     // TRAP opcode
-    pub fn op_trap(&mut self, instruction: u16) {
+    pub fn op_trap(&mut self, mem: &mut Memory, instruction: u16) {
         // extract the trap vector from the bits 0-7
         let trapvect = instruction & 0xFF;
         // execute the correct TRAP instruction
         match trapvect {
+            // OUT
+            0x21 => print!("{}", self.regs[0] as u8 as char), 
+            // PUTS
+            0x22 => {
+                let mut i = self.regs[0];
+                let mut curr = mem.read_word(i);
+                while curr != 0x0 {
+                    print!("{}", curr as u8 as char);
+                    i += 1;
+                    curr = mem.read_word(i);
+                }
+            },
+            // HLT
             0x25 => self.running = false,
             _ => unimplemented!(),
         }
